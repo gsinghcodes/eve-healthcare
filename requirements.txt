@@ -1,0 +1,6 @@
+fastapi
+sqlalchemy
+psycopg[binary]
+pydantic-settings
+alembic
+PyJWT

@@ -1,0 +1,43 @@
+from uuid import UUID, uuid4
+
+from sqlalchemy import String, Boolean
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from typing import TYPE_CHECKING
+
+from database.models.base_model import BaseModel
+from database.models.date_time_model import DateTimeMixin
+
+
+class User(BaseModel, DateTimeMixin):
+    __tablename__ = "users"
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+    )
+
+    phone_number: Mapped[str] = mapped_column(
+        String(13),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    is_verified: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
+
+    otp_verifications: Mapped[list["OTPVerification"]] = relationship(
+        "OTPVerification",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
+    bookings: Mapped[list["Booking"]] = relationship(
+        "Booking",
+        back_populates="user",
+    )
