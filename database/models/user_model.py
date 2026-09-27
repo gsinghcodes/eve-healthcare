@@ -1,4 +1,5 @@
 from uuid import UUID, uuid4
+from enum import Enum
 
 from sqlalchemy import String, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -7,6 +8,12 @@ from typing import TYPE_CHECKING
 
 from database.models.base_model import BaseModel
 from database.models.date_time_model import DateTimeMixin
+
+
+class UserRole(str, Enum):
+    USER = "user"
+    CENTER_MANAGER = "center_manager"
+    ADMIN = "admin"
 
 
 class User(BaseModel, DateTimeMixin):
@@ -31,6 +38,17 @@ class User(BaseModel, DateTimeMixin):
         nullable=False,
     )
 
+    role: Mapped[UserRole] = mapped_column(
+        String(32),
+        default=UserRole.USER,
+        nullable=False,
+    )
+
+    refresh_token_hash: Mapped[str] = mapped_column(
+        String(64),
+        nullable=True,
+    )
+
     otp_verifications: Mapped[list["OTPVerification"]] = relationship(
         "OTPVerification",
         back_populates="user",
@@ -40,4 +58,9 @@ class User(BaseModel, DateTimeMixin):
     bookings: Mapped[list["Booking"]] = relationship(
         "Booking",
         back_populates="user",
+    )
+
+    managed_centers: Mapped[list["DiagnosticCenter"]] = relationship(
+        "DiagnosticCenter",
+        back_populates="owner",
     )
