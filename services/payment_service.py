@@ -376,6 +376,7 @@ class PaymentService:
                 booking.status = BookingStatus.EXPIRED.value
                 if schedule and schedule.status == ScheduleStatus.PENDING.value:
                     schedule.status = ScheduleStatus.CANCELLED.value
+                # Refund to user gets inititated
             elif booking.status == BookingStatus.PENDING.value:
                 booking.status = BookingStatus.CONFIRMED.value
                 if schedule:

@@ -515,10 +515,7 @@ class BookingService:
 
                 refund_issued = False
                 now_utc = datetime.now(timezone.utc)
-                if (
-                    schedule
-                    and schedule.starts_at - now_utc >= self.REFUND_CUTOFF
-                ):
+                if schedule and schedule.starts_at - now_utc >= self.REFUND_CUTOFF:
                     successful_payments = (
                         self.payment_repository.get_successful_for_booking_for_update(
                             booking_id=booking.id,

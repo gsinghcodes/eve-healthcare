@@ -5,65 +5,46 @@ Backend API for a diagnostic healthcare booking platform built with FastAPI, Pos
 ## Features
 
 - OTP-based authentication
-
 - JWT access tokens and HTTP-only refresh-token rotation
-
+- Proper logging per service
 - Diagnostic test discovery
-
 - Radius-based diagnostic centre search
-
-- Centre detail with available test offerings
-
+- Centre details with available test offerings
 - Appointment date and slot availability
-
 - Booking creation, rescheduling, cancellation, and history
-
 - Payment creation and webhook handling
-
 - Idempotent payment webhook events
-
 - Pending-booking expiration with Celery
-
 - Redis-backed rate limiting
-
 - Role-based access control
-
 - Database-level protection against concurrent slot booking
-
 - Alembic database migrations
 
 ## Tech Stack
 
 - Python 3.12
-
 - FastAPI
-
 - SQLAlchemy
-
 - PostgreSQL
-
 - Psycopg
-
 - Alembic
-
 - Redis
-
 - Celery
-
 - PyJWT
-
 - Pydantic Settings
-
 - Uvicorn
-
 
 ## Run with Docker Compose
 
-Docker Compose is the recommended way to run the complete local backend because the application uses FastAPI, PostgreSQL, Redis, a Celery worker, and Celery Beat.
+Docker Compose runs the complete backend stack:
+
+- FastAPI
+- PostgreSQL
+- Redis
+- Celery Worker
+- Celery Beat
 
 ### Requirements
-
-Install:
 
 - Docker Desktop, or Docker Engine with the Docker Compose plugin
 
@@ -72,217 +53,108 @@ Install:
 PowerShell:
 
 ```powershell
-
 Copy-Item .env.docker.example .env
-
 ```
 
 macOS/Linux:
 
 ```bash
-
 cp .env.docker.example .env
-
 ```
-
-Set a strong value for `JWT_SECRET_KEY` in `.env`.
 
 ### 2. Build and start the stack
 
 ```bash
-
 docker compose up --build
-
 ```
 
-The first startup performs the following sequence:
+The API container runs the database migrations before starting FastAPI.
+
+### 3. API
 
 ```text
-
-PostgreSQL becomes healthy
-
-        ↓
-
-Alembic migrations run
-
-        ↓
-
-FastAPI starts
-
-        ↓
-
-Celery Worker starts
-
-        ↓
-
-Celery Beat starts
-
-```
-
-### 3. API endpoints
-
-FastAPI:
-
-```text
-
 http://localhost:8000
-
 ```
 
 Swagger UI:
 
 ```text
-
 http://localhost:8000/docs
-
 ```
 
-OpenAPI schema:
+OpenAPI:
 
 ```text
-
 http://localhost:8000/openapi.json
-
 ```
 
-### 4. Stop the application
+### 4. Stop the stack
 
 ```bash
-
 docker compose down
-
 ```
 
-To remove the PostgreSQL and Redis Docker volumes as well:
 
-
-### 5. View service logs
+### 5. View logs
 
 All services:
 
 ```bash
-
 docker compose logs -f
-
 ```
 
-API only:
+API:
 
 ```bash
-
 docker compose logs -f app
-
 ```
 
-Celery worker:
+Worker:
 
 ```bash
-
 docker compose logs -f worker
-
 ```
 
-Celery Beat:
+Beat:
 
 ```bash
-
 docker compose logs -f beat
-
 ```
 
 ## Docker Services
 
-The Compose stack contains five application/infrastructure services:
-
 | Service | Purpose | Port |
-
-|---------|---------|------|
-
-| `api` | FastAPI application | `8000` |
-
+|---|---|---:|
+| `app` | FastAPI application | `8000` |
 | `worker` | Celery background worker | internal |
-
 | `beat` | Celery periodic scheduler | internal |
-
-| `postgres` | PostgreSQL database | `5432` |
-
+| `db` | PostgreSQL database | `5432` |
 | `redis` | Celery broker and rate limiting | `6379` |
 
-There is also a short-lived `migrate` service that runs `alembic upgrade head` before the API, worker, and Beat services start.
+The `app`, worker, and Beat services use the same backend image with different commands.
 
-The API, worker, and Beat all use the same backend Docker image. Their commands differ according to their responsibility.
+## Running Scripts
 
-## Local Non-Docker Development
+Utility scripts are located in the `scripts/` directory.
 
-Docker is recommended, but the backend can also be run directly with Python.
-
-Create a virtual environment:
+Run a script inside the API container with:
 
 ```bash
-
-python -m venv .venv
-
+docker compose exec app python -m scripts.<script_name>
 ```
 
-Activate it on Windows PowerShell:
-
-```powershell
-
-.venv\Scripts\Activate.ps1
-
-```
-
-Activate it on macOS/Linux:
+For example:
 
 ```bash
-
-source .venv/bin/activate
-
+docker compose exec app python -m scripts.seed_data
 ```
 
-Install dependencies:
+Use the Python module name without the `.py` extension.
 
-```bash
-
-pip install -r requirements.txt
-
-```
-
-Configure `.env` using `.env.example`, then run:
-
-```bash
-
-alembic upgrade head
-
-```
-
-Start FastAPI:
-
-```bash
-
-uvicorn main\:app --reload
-
-```
-
-Start the Celery worker in another terminal:
-
-```bash
-
-celery -A core.celery_app.celery_app worker --loglevel=info
-
-```
-
-Start Celery Beat in another terminal:
-
-```bash
-
-celery -A core.celery_app.celery_app beat --loglevel=info
-
-```
 
 ## Environment Variables
 
-The application requires at least:
+The application requires:
 
 ```env
 
@@ -296,393 +168,275 @@ POSTGRES_PORT=...
 
 ```
 
-### Docker-specific database and Redis URLs
+## Database / Schema Design
 
-Inside Docker Compose, service names are used for communication:
-
-```text
-
-postgresql+psycopg://postgres:postgres@postgres:5432/eve_healthcare
-
-redis://redis:6379/0
-
-```
-
-Do not use `localhost` for these internal connections from a container. `localhost` inside a container refers to that same container.
-
-## Database Migrations
-
-Run migrations directly:
-
-```bash
-
-alembic upgrade head
-
-```
-
-Create a migration after changing SQLAlchemy models:
-
-```bash
-
-alembic revision --autogenerate -m "describe the change"
-
-```
-
-Review generated migrations before applying them.
-
-
-## Running Scripts
-
-Project utility scripts are located in the `scripts/` directory.
-
-After the Docker stack is running, execute a script inside the API container using:
-
-```bash
-docker compose exec app python -m scripts.<script_name>
-```
-
-For example:
-
-```bash
-docker compose exec app python -m scripts.seed_data
-```
-
-Replace `<script_name>` with the Python module you want to run.
-
-The script should be referenced as a Python module, without the `.py` extension.
-
-For example:
+The database is structured around the diagnostic booking flow.
 
 ```text
-scripts/
-├── seed_data.py
-├── create_admin.py
-└── ...
+User
+ │
+ ├── Authentication / Refresh Tokens
+ │
+ └── Bookings
+       │
+       ├── Payment
+       │
+       └── Schedule
+             │
+             └── Centre Test
+                    │
+                    ├── Diagnostic Centre
+                    └── Diagnostic Test
 ```
 
-Run them as:
+A diagnostic test represents the public test being searched for, while a centre test represents that test as an offering at a specific diagnostic centre.
 
-```bash
-docker compose exec app python -m scripts.seed_data
-docker compose exec app python -m scripts.create_admin
-```
+Schedules represent available appointment slots. Bookings reference the selected schedule and centre test.
 
-These scripts run inside the same Docker environment as the API, so they use the configured application environment and can connect to the Docker PostgreSQL and Redis services.
+Bookings initially enter `PENDING` and receive an `expires_at` timestamp. An unexpired pending booking occupies the slot. Once the expiration time passes, the slot is logically available even if the Celery cleanup task has not yet run.
 
+Payment records are associated with bookings, while webhook events are stored separately using the provider event ID. Webhook event IDs have a database-level unique constraint to prevent duplicate event records.
 
-With Docker Compose, migrations are run automatically by the `migrate` service during startup.
+Database constraints and row-level locking provide protection against concurrent slot booking.
 
 ## Authentication
 
 Authentication uses OTP verification followed by JWT authentication.
 
-Main endpoints include:
+Main endpoints:
 
 ```text
-
 POST /api/v1/auth/request-otp
-
 POST /api/v1/auth/verify-otp
-
 POST /api/v1/auth/refresh
-
 ```
 
-The refresh token is stored in an HTTP-only cookie and rotated during refresh.
+Refresh tokens are stored in HTTP-only cookies and rotated during refresh.
 
-For local HTTP development, the Docker example sets:
+For local HTTP development:
 
 ```env
-
 REFRESH_TOKEN_COOKIE_SECURE=false
-
 ```
 
-For HTTPS production deployments it should be enabled.
+For HTTPS production deployments, it should be enabled.
 
 ## Diagnostic Tests
 
 Diagnostic tests are exposed under:
 
 ```text
-
 /api/v1/tests
-
 ```
 
-The public test-discovery flow is used by the frontend to select a diagnostic test before searching for centres.
+The frontend uses test discovery before searching for diagnostic centres.
 
 ## Diagnostic Centres
 
 Centre APIs are under:
 
 ```text
-
 /api/v1/centres
-
 ```
 
-### Search
+Search:
 
 ```text
-
 POST /api/v1/centres/search
-
 ```
 
-The search supports radius-based centre discovery and optional filtering by diagnostic test.
-
-### Centre Details
+Centre details:
 
 ```text
-
 GET /api/v1/centres/{center_id}
-
 ```
 
-The response includes the centre's available test offerings.
+The centre detail response includes its available test offerings.
 
-Each item in the `tests` array represents a centre-specific test offering. Its `id` is the `center_test_id` used by the scheduling and booking APIs.
+Each item in the `tests` array represents a centre-specific test offering. Its `id` is the `center_test_id` used by scheduling and booking APIs.
+
 
 ## Appointment Scheduling
 
-Available appointment slots are requested for a specific centre test and date.
+Available slots are requested for a specific centre test and appointment date.
 
-Appointment dates use the date-only format:
+Dates use:
 
 ```text
-
 YYYY-MM-DD
-
 ```
 
 Example:
 
 ```text
-
 2026-09-27
-
 ```
 
 Appointment times are aligned to 30-minute slots.
 
 ## Booking Flow
 
-The booking flow is:
-
 ```text
-
 Select diagnostic test
-
-        ↓
-
+        ↓
 Search centres
-
-        ↓
-
+        ↓
 Open centre
-
-        ↓
-
-Select centre's test offering
-
-        ↓
-
+        ↓
+Select centre test
+        ↓
 Select appointment date
-
-        ↓
-
+        ↓
 Fetch available slots
-
-        ↓
-
+        ↓
 Select slot
-
-        ↓
-
+        ↓
 Create pending booking
-
-        ↓
-
+        ↓
 Complete payment
-
-        ↓
-
+        ↓
 Confirm booking
-
 ```
 
-A booking request contains:
 
-```json
+### Booking Expiration
 
-{
+New bookings start as `PENDING` and receive an `expires_at` timestamp based on:
 
-  "center_test_id": "uuid",
 
-  "appointment_date": "2026-09-27",
+A pending booking with an unexpired `expires_at` blocks its slot.
 
-  "time_slot": "16:00:00"
+Celery Beat triggers the expiration task every 60 seconds. The worker marks expired pending bookings as `EXPIRED` and releases the associated schedule state.
 
-}
+### Concurrency Protection
 
-```
-
-### Booking expiration
-
-New bookings initially have `PENDING` status and an `expires_at` timestamp controlled by:
-
-```env
-
-BOOKING_PAYMENT_TIMEOUT_MINUTES=10
-
-```
-
-A pending booking with an unexpired `expires_at` blocks its slot. Once the expiration time passes, the slot is logically available even before the periodic cleanup task runs.
-
-Celery Beat triggers the expiration task every 60 seconds. The Celery worker marks expired pending bookings as `EXPIRED` and releases the associated schedule state.
-
-### Concurrency protection
-
-Application-level availability checks are combined with row locking and a database-level active-slot uniqueness constraint to protect against concurrent double booking.
+Availability checks are combined with row locking and database-level constraints to prevent concurrent double booking.
 
 ## Payments
 
 Payment APIs are exposed under:
 
 ```text
-
 /api/v1/payments
-
 ```
 
-The payment flow supports payment creation and webhook processing.
-
-The payment state machine allows the following transitions:
+The payment state machine supports:
 
 ```text
-
 PENDING → SUCCESS
-
 PENDING → FAILED
-
 SUCCESS → REFUNDED
-
 ```
 
-Repeated webhook delivery for the same event is handled idempotently.
+Repeated webhook delivery for the same event is handled idempotently using the provider event ID and payment state validation.
 
-For a production payment-provider integration, provider-specific webhook signature verification should be configured before processing real payment events.
+The webhook event ID is protected by a database-level unique constraint to prevent duplicate event records.
+
+For production payment-provider integration, webhook signature verification should be performed before processing payment events.
 
 ## Celery
 
 Celery uses Redis as its broker.
 
-The configured periodic task is:
+The booking expiration task runs every 60 seconds through Celery Beat:
 
 ```text
-
 tasks.booking_tasks.release_expired_bookings
-
 ```
 
-It runs every 60 seconds through Celery Beat.
-
-The worker and Beat processes are deliberately separate containers in Docker Compose so each process has one responsibility and can be restarted or scaled independently.
+The worker and Beat processes run separately so they can be restarted and scaled independently.
 
 ## Redis Rate Limiting
 
-Redis is also used for application-level rate limiting.
+Redis is used for application-level rate limiting.
 
-The configured limits cover operations including:
+The configured limits cover:
 
 - OTP requests
-
 - OTP verification
-
 - Refresh-token requests
-
 - Booking creation
-
 - Payment operations
 
-Limits are configurable through environment variables.
+The rate-limit values have application defaults in configuration and can be overridden through environment variables when required.
 
 ## Testing
 
-Run the test suite locally with:
+Run the test suite:
 
 ```bash
-
 pytest -q
-
 ```
 
-Make sure the required environment variables are configured before running tests.
+Make sure the required environment variables and dependent services are available.
 
-For integration tests that use PostgreSQL or Redis, make sure those services are running.
+## Important Assumptions
 
-With Docker Compose, the application services are available through the same local infrastructure used by the backend.
+- A booking represents one appointment slot for one centre test.
+- An unexpired `PENDING` booking temporarily reserves its slot.
+- Booking expiration is determined using `expires_at`, not the timing of the Celery cleanup task.
+- A successful payment confirms an active pending booking.
+- A successful payment received after a booking has expired does not reactivate that booking and the amount is refunded.
+- Payment providers may retry webhook delivery, so webhook processing must be idempotent.
+- Concurrent booking attempts can occur and must be protected at the database level.
 
+## What I Would Improve With More Time
+
+- Add user notifications for different user types and events such as bookings, cancellations, payments, and appointments.
+- Make the RBAC system more granular with role-specific permissions and endpoints.
+- Add S3 or Google Cloud Storage for centre images and other uploaded assets.
+- Implement proper refund logic based on how far in advance an appointment is cancelled.
+- Improve production infrastructure and observability as the system scales.
+
+## API Documentation
+
+After starting the API:
+
+```text
+http://localhost:8000/docs
+```
+
+Swagger UI provides interactive documentation for the API.
+
+OpenAPI JSON:
+
+```text
+http://localhost:8000/openapi.json
+```
 
 ## Health Check
 
 ```text
-
 GET /
-
 ```
 
 Example response:
 
 ```json
-
 {
-
-  "status": 200,
-
-  "message": "EVE Healthcare API is running"
-
+  "status": 200,
+  "message": "EVE Healthcare API is running"
 }
-
 ```
 
-## End-to-End Architecture
+## Architecture
 
 ```text
-
-                    ┌─────────────────┐
-
-                    │     FastAPI     │
-
-                    │       API       │
-
-                    └────┬───────┬────┘
-
-                         │       │
-
-                         │       └──────────────┐
-
-                         ▼                      ▼
-
-                  ┌────────────┐         ┌───────────┐
-
-                  │ PostgreSQL │         │   Redis   │
-
-                  └────────────┘         └─────┬─────┘
-
-                                               │
-
-                                  ┌────────────┴────────────┐
-
-                                  ▼                         ▼
-
-                           ┌────────────┐            ┌────────────┐
-
-                           │   Celery   │            │   Celery   │
-
-                           │   Worker   │            │    Beat    │
-
-                           └────────────┘            └────────────┘
-
+                    ┌─────────────────┐
+                    │     FastAPI     │
+                    │       API       │
+                    └────┬───────┬────┘
+                         │       │
+                         │       └──────────────┐
+                         ▼                      ▼
+                  ┌────────────┐         ┌───────────┐
+                  │ PostgreSQL │         │   Redis   │
+                  └────────────┘         └─────┬─────┘
+                                               │
+                                      ┌────────┴────────┐
+                                      ▼                 ▼
+                               ┌────────────┐    ┌────────────┐
+                               │   Celery   │    │   Celery   │
+                               │   Worker   │    │    Beat    │
+                               └────────────┘    └────────────┘
 ```
