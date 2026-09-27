@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from core.config import settings
+from database.models.user_model import User
+from routers.middlewares.auth import get_current_user
 from schemas.requests.auth import (
     RequestOTPRequest,
     VerifyOTPRequest,
@@ -21,6 +23,35 @@ router = APIRouter(
 
 auth_service = AuthService()
 REFRESH_TOKEN_COOKIE = "refresh_token"
+
+
+@router.get(
+    "/me",
+    summary="Get current user",
+    description="Returns the authenticated user's profile.",
+    response_description="Current user's profile",
+)
+def get_current_user_profile(
+    current_user: User = Depends(get_current_user),
+):
+    role = getattr(current_user.role, "value", current_user.role)
+    data = {
+        "id": str(current_user.id),
+        "phone_number": current_user.phone_number,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+        "is_verified": current_user.is_verified,
+        "role": role,
+    }
+    return JSONResponse(
+        content={
+            "status": 200,
+            "data": data,
+            "message": "User fetched successfully",
+            "error": "",
+        },
+        status_code=200,
+    )
 
 
 def enforce_otp_request_limit(

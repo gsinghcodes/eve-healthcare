@@ -32,6 +32,16 @@ class User(BaseModel, DateTimeMixin):
         index=True,
     )
 
+    first_name: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    last_name: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
     is_verified: Mapped[bool] = mapped_column(
         Boolean,
         default=False,
