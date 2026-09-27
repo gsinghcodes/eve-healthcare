@@ -1,19 +1,32 @@
 from uuid import UUID, uuid4
 from decimal import Decimal
 from enum import Enum
+from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Numeric, String, UniqueConstraint, CheckConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 
 from database.models.base_model import BaseModel
 from database.models.date_time_model import DateTimeMixin
 
+if TYPE_CHECKING:
+    from database.models.booking_model import Booking
+
 
 class PaymentStatus(str, Enum):
     PENDING = "PENDING"
     SUCCESS = "SUCCESS"
     FAILED = "FAILED"
+    REFUNDED = "REFUNDED"
 
 
 class Payment(BaseModel, DateTimeMixin):
@@ -25,6 +38,12 @@ class Payment(BaseModel, DateTimeMixin):
             name="uq_provider_payment_id",
         ),
         CheckConstraint("amount >= 0", name="ck_payment_amount_non_negative"),
+        Index(
+            "uq_pending_payment_per_booking",
+            "booking_id",
+            unique=True,
+            postgresql_where=text("status = 'PENDING'"),
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(
