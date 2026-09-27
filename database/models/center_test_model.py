@@ -85,7 +85,8 @@ class CenterTest(BaseModel, DateTimeMixin):
         back_populates="center_tests",
     )
 
-    bookings: Mapped[list["Booking"]] = relationship(
-        "Booking",
+    schedules: Mapped[list["Schedule"]] = relationship(
+        "Schedule",
         back_populates="center_test",
+        cascade="all, delete-orphan",
     )

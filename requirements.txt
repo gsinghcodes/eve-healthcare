@@ -4,3 +4,8 @@ psycopg[binary]
 pydantic-settings
 alembic
 PyJWT
+geohash2
+uvicorn
+celery[redis]
+redis
+PyYAML
